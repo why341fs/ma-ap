@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: gemma-api
+    env: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: PORT
+        value: 5001
+    disk:
+      name: ollama-models
+      mountPath: /root/.ollama
+      sizeGB: 10
+    plan: free

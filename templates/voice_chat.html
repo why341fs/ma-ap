@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Chat with Gemma</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        
+        #chat-box {
+            height: 400px;
+            overflow-y: auto;
+            border: 2px solid #f0f0f0;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background: #f9f9f9;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            padding: 12px 18px;
+            border-radius: 18px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        
+        .user-message {
+            background: #667eea;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+        
+        .bot-message {
+            background: #e9ecef;
+            color: #333;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        #user-input {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #667eea;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+        }
+        
+        button {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        
+        #send-btn {
+            background: #667eea;
+            color: white;
+        }
+        
+        #send-btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+        
+        #voice-btn {
+            background: #28a745;
+            color: white;
+            min-width: 120px;
+        }
+        
+        #voice-btn:hover {
+            background: #218838;
+        }
+        
+        #voice-btn.listening {
+            background: #dc3545;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .status {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            color: #667eea;
+            margin: 10px 0;
+        }
+        
+        .loading.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 Voice Chat with Gemma</h1>
+        
+        <div id="chat-box"></div>
+        
+        <div class="loading" id="loading">
+            <div>⏳ Gemma is thinking...</div>
+        </div>
+        
+        <div class="controls">
+            <input type="text" id="user-input" placeholder="Type your message or use voice..." />
+            <button id="send-btn">Send</button>
+        </div>
+        
+        <button id="voice-btn">🎤 Start Voice</button>
+        
+        <div class="status" id="status">Ready to chat!</div>
+    </div>
+
+    <script>
+        const chatBox = document.getElementById('chat-box');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const voiceBtn = document.getElementById('voice-btn');
+        const status = document.getElementById('status');
+        const loading = document.getElementById('loading');
+        
+        let recognition;
+        let isListening = false;
+        
+        // Check if browser supports speech recognition
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US'; // Change to 'ar-SA' for Arabic
+            
+            recognition.onstart = () => {
+                isListening = true;
+                voiceBtn.classList.add('listening');
+                voiceBtn.textContent = '🔴 Listening...';
+                status.textContent = 'Listening... Speak now!';
+            };
+            
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                userInput.value = transcript;
+                sendMessage();
+            };
+            
+            recognition.onend = () => {
+                isListening = false;
+                voiceBtn.classList.remove('listening');
+                voiceBtn.textContent = '🎤 Start Voice';
+                status.textContent = 'Ready to chat!';
+            };
+            
+            recognition.onerror = (event) => {
+                status.textContent = 'Error: ' + event.error;
+                voiceBtn.classList.remove('listening');
+                voiceBtn.textContent = '🎤 Start Voice';
+            };
+        } else {
+            voiceBtn.disabled = true;
+            voiceBtn.textContent = '❌ Voice Not Supported';
+            status.textContent = 'Voice input not supported in this browser';
+        }
+        
+        // Text-to-Speech
+        function speak(text) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 1;
+            utterance.pitch = 1;
+            utterance.volume = 1;
+            window.speechSynthesis.speak(utterance);
+        }
+        
+        // Add message to chat
+        function addMessage(message, isUser) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ' + (isUser ? 'user-message' : 'bot-message');
+            messageDiv.textContent = message;
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+        
+        // Send message to backend
+        async function sendMessage() {
+            const message = userInput.value.trim();
+            if (!message) return;
+            
+            addMessage(message, true);
+            userInput.value = '';
+            loading.classList.add('active');
+            status.textContent = 'Gemma is thinking...';
+            
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+                
+                const data = await response.json();
+                addMessage(data.response, false);
+                speak(data.response); // Speak the response
+                status.textContent = 'Ready to chat!';
+            } catch (error) {
+                addMessage('Error: Could not connect to Gemma', false);
+                status.textContent = 'Error occurred';
+            } finally {
+                loading.classList.remove('active');
+            }
+        }
+        
+        // Event listeners
+        sendBtn.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+        
+        voiceBtn.addEventListener('click', () => {
+            if (recognition) {
+                if (isListening) {
+                    recognition.stop();
+                } else {
+                    recognition.start();
+                }
+            }
+        });
+        
+        // Initial message
+        addMessage('Hello! I\'m Gemma. You can type or use voice to talk to me!', false);
+    </script>
+</body>
+</html>
